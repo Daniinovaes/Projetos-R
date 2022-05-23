@@ -1,0 +1,108 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Instalação e Carregamento de Todos os Pacotes
+
+```{r}
+pacotes <- c("tidyverse","cluster","dendextend","factoextra","fpc","gridExtra","readxl")
+
+if(sum(as.numeric(!pacotes %in% installed.packages())) != 0){
+  instalador <- pacotes[!pacotes %in% installed.packages()]
+  for(i in 1:length(instalador)) {
+    install.packages(instalador, dependencies = T)
+    break()}
+  sapply(pacotes, require, character = T)
+} else {
+  sapply(pacotes, require, character = T)
+}
+```
+
+#Organização dos dados
+
+```{r}
+#leitura dos dados
+mcdonalds <- read.table("dados/MCDONALDS.csv", 
+                         sep = ";", 
+                         header = T, 
+                         dec = ",", 
+                         encoding = "UTF-8")
+
+#substituindo os indice pela primeira coluna
+rownames(mcdonalds) <- mcdonalds[,1] 
+
+#deletando primeira coluna que foi substituida
+mcdonalds <- mcdonalds[,-1] 
+
+View(mcdonalds)
+```
+
+#Método do cotovelo
+
+```{r}
+#Padronizar variaveis
+mcdonalds.padronizado <- scale(mcdonalds)
+#verificar o numero de clusters
+fviz_nbclust(mcdonalds.padronizado, FUN = hcut, method = "wss") 
+#numero de clusters é quatro
+cotovelo <- 4
+```
+
+#Definição dos clusters
+
+```{r}
+#Criar clusters
+mcdonalds.k2 <- kmeans(mcdonalds.padronizado, centers = 2)
+mcdonalds.k3 <- kmeans(mcdonalds.padronizado, centers = 3)
+mcdonalds.k4 <- kmeans(mcdonalds.padronizado, centers = 4)
+mcdonalds.k5 <- kmeans(mcdonalds.padronizado, centers = 5)
+#Criar graficos
+G1 <- fviz_cluster(mcdonalds.k2, geom = "point", data = mcdonalds.padronizado) + ggtitle("k = 2")
+G2 <- fviz_cluster(mcdonalds.k3, geom = "point",  data = mcdonalds.padronizado) + ggtitle("k = 3")
+G3 <- fviz_cluster(mcdonalds.k4, geom = "point",  data = mcdonalds.padronizado) + ggtitle("k = 4")
+G4 <- fviz_cluster(mcdonalds.k5, geom = "point",  data = mcdonalds.padronizado) + ggtitle("k = 5")
+#comparar graficos
+grid.arrange(G1, G2, G3, G4, nrow = 2)
+```
+
+#Adicionando os clusters na planilha
+
+```{r}
+#juntando dados
+mcdonalds_final <- read.table("dados/MCDONALDS.csv", 
+                         sep = ";", 
+                         header = T, 
+                         dec = ",", 
+                         encoding = "UTF-8")
+mcdonaldsfit <- data.frame((mcdonalds.k4$cluster))
+
+#Agrupar cluster e base
+McdonaldsFinal <-  cbind(mcdonalds_final, mcdonaldsfit)
+colnames(McdonaldsFinal)[13] <- "Cluster"
+
+View(McdonaldsFinal)
+```
+
+#Outros metodos além do k-means
+
+```{r}
+#calculo da distancia euclidiana
+d <- dist(mcdonalds, method = "euclidean")
+#metodos disponiveis "average", "single", "complete" e "ward.D"
+hcsimple <- hclust(d, method = "single" )
+hccomplete <- hclust(d, method = "complete" )
+hcaverage <- hclust(d, method = "average" )
+hcward <- hclust(d, method = "ward.D" )
+
+#Dendograma com marcação do número de cluster
+Gsimple <- plot(hcsimple, cex = 0.6, hang = -1)
+rect.hclust(hcsimple, k = cotovelo)
+Gcomplete <- plot(hccomplete, cex = 0.6, hang = -1)
+rect.hclust(hccomplete, k = cotovelo)
+Gaverage <- plot(hcaverage, cex = 0.6, hang = -1)
+rect.hclust(hcaverage, k = cotovelo)
+Gward <- plot(hcward, cex = 0.6, hang = -1)
+rect.hclust(hcward, k = cotovelo)
+```
+
